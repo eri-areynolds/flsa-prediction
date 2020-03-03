@@ -1,6 +1,6 @@
 (SELECT f.erijobid AS job_id
   , d.title + '. ' + d.ShortDesc AS title_desc
-  , f.ajblvidp AS flsa
+  , CASE WHEN f.ajblvidp = 'N' THEN 0 ELSE 1 END AS flsa
 FROM sa.Sadescriptions as d
 INNER JOIN sa.fname AS f
   ON d.edot=f.jobdot
@@ -13,7 +13,7 @@ WHERE jn.erinationid = 193
 UNION
 (SELECT f.erijobid AS job_id
   , d.title + '. ' + d.LongDesc AS title_desc
-  , f.ajblvidp AS flsa
+  , CASE WHEN f.ajblvidp = 'N' THEN 1 ELSE 0 END AS flsa
 FROM sa.Sadescriptions as d
 INNER JOIN sa.fname AS f
   ON d.edot=f.jobdot
@@ -26,7 +26,7 @@ WHERE jn.erinationid = 193
 UNION
 (SELECT d.erijobid AS job_id
   , d.title + '. ' + d.desc_matched AS title_desc
-  , f.ajblvidp AS flsa
+  , CASE WHEN f.ajblvidp = 'N' THEN 1 ELSE 0 END AS flsa
 FROM dbo.Descriptions_Matched AS d
 INNER JOIN sa.fname AS f
   ON d.erijobid=f.erijobid
@@ -40,7 +40,7 @@ WHERE jn.erinationid = 193
 UNION
 (SELECT d.erijobid AS job_id
   , d.cbtitle + '. ' + d.cbdescription AS title_desc
-  , f.ajblvidp AS flsa
+  , CASE WHEN f.ajblvidp = 'N' THEN 1 ELSE 0 END AS flsa
 FROM dbo.Descriptions_Matched_CB AS d
 INNER JOIN sa.fname AS f
   ON d.erijobid=f.erijobid

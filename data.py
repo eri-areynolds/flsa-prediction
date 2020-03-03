@@ -108,12 +108,7 @@ if __name__ == '__main__':
     desc_df = desc_df[desc_df.index.isin(comp_df.index)]
     desc_job_ids = desc_df.index.values
 
-    lb = LabelBinarizer()
-    desc_y = lb.fit_transform(desc_df.flsa.values)
-    classes = lb.classes_
-    file = os.path.join(os.getcwd(), 'data', 'classes.npy')
-    with open(file, 'wb') as f:
-        np.save(f, classes)
+    desc_y = desc_df.flsa.values
 
     desc_pipe = Pipeline([
         ('df_extract', DataFrameTransformer('title_desc')),
@@ -170,7 +165,7 @@ if __name__ == '__main__':
         'y_valid': y_valid
     }
     for file, obj in ds_lookup.items():
-        path = os.path.join('data', '{}.npy'.format(file))
+        path = os.path.join('data', 'simple_exemption', '{}.npy'.format(file))
         with open(path, 'wb') as f:
             np.save(f, obj)
 
