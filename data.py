@@ -16,6 +16,7 @@ import os
 import tfpipeline.v2 as tfp
 from tensorflow import io
 
+
 def eri_db(db, server='SNADSSQ3', driver='{SQL Server}'):
     params = ('Driver={driver};'
               'Server={server};'
@@ -149,16 +150,24 @@ if __name__ == '__main__':
     assert len(bert_input) == len(comp_input) == len(y)
     splitter = StratifiedShuffleSplit(n_splits=2, test_size=0.25, random_state=43)
     for train_index, test_index in splitter.split(comp_input, y):
-        comp_input_train, comp_input_test = comp_input[train_index], all_comp[test_index]
-        bert_input_train, bert_input_test = bert_input[train_index], all_input_ids[test_index]
-        y_train, y_test = y[train_index], y[test_index]
+        comp_input_tmp, comp_input_test = comp_input[train_index], comp_input[test_index]
+        bert_input_tmp, bert_input_test = bert_input[train_index], bert_input[test_index]
+        y_tmp, y_test = y[train_index], y[test_index]
+    splitter = StratifiedShuffleSplit(n_splits=2, test_size=0.1, random_state=12)
+    for train_index, valid_index in splitter.split(comp_input_tmp, y_tmp):
+        comp_input_train, comp_input_valid = comp_input_tmp[train_index], comp_input_tmp[valid_index]
+        bert_input_train, bert_input_valid = bert_input_tmp[train_index], bert_input_tmp[valid_index]
+        y_train, y_valid = y_tmp[train_index], y_tmp[valid_index]
     ds_lookup = {
         'comp_input_train': comp_input_train,
         'comp_input_test': comp_input_test,
+        'comp_input_valid': comp_input_valid,
         'bert_input_train': bert_input_train,
         'bert_input_test': bert_input_test,
+        'bert_input_valid': bert_input_valid,
         'y_train': y_train,
-        'y_test': y_test
+        'y_test': y_test,
+        'y_valid': y_valid
     }
     for file, obj in ds_lookup.items():
         path = os.path.join('data', '{}.npy'.format(file))
