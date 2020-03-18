@@ -92,23 +92,11 @@ class BERTTokenizer(BaseEstimator, TransformerMixin):
 if __name__ == '__main__':
     assessor_work = eri_db('AssessorWork')
 
-    with open('get_exp_data.sql', 'r') as f:
-        sql = f.read()
-    exp_df = pd.read_sql(sql, assessor_work, index_col='job_id')
-    with open('get_rev_data.sql', 'r') as f:
-        sql = f.read()
-    rev_df = pd.read_sql(sql, assessor_work)
-    rev_df = rev_df.pivot('job_id', 'cut_point', 'comp')
-    rev_df.columns = ['low_comp', 'high_comp']
-    comp_df = pd.concat([exp_df, rev_df])
-
     with open('get_desc_data.sql', 'r') as f:
         sql = f.read()
-    desc_df = pd.read_sql(sql, assessor_work, index_col='job_id').sort_index()
-    desc_df = desc_df[desc_df.index.isin(comp_df.index)]
-    desc_job_ids = desc_df.index.values
-
-    desc_y = desc_df.flsa.values
+    df = pd.read_sql(sql, assessor_work, index_col='job_id').sort_index()
+    job_ids = df.index.values
+    y = df.flsa.values
 
     desc_pipe = Pipeline([
         ('df_extract', DataFrameTransformer('title_desc')),
@@ -116,56 +104,32 @@ if __name__ == '__main__':
         ('tokenizer', BERTTokenizer(os.path.join(os.getcwd(), 'data', 'uncased_base', 'vocab.txt'),
                                     max_seq_len=256))
     ])
-    desc_X = desc_pipe.fit_transform(desc_df)
-
-    bert_input = []
-    comp_input = []
-    y = []
-    for i, id in enumerate(desc_job_ids):
-        label = desc_y[i]
-        input_ids = desc_X[i]
-        low_comp = comp_df.loc[id, 'low_comp']
-        high_comp = comp_df.loc[id, 'high_comp']
-        rand_comps = np.random.randint(low_comp, high_comp, 10)
-        comp_samples = [low_comp, high_comp, *rand_comps]
-        for comp in comp_samples:
-            bert_input.append(input_ids)
-            comp_input.append(comp)
-            y.append(label)
-    bert_input = np.array(bert_input).reshape(-1, 256)
-    comp_input = np.array(comp_input).reshape(-1, 1)
+    X = desc_pipe.fit_transform(df)
+    X = np.array(X).reshape(-1, 256)
     y = np.array(y, dtype='int64')
     shuf_idx = np.random.permutation(len(y))
-    bert_input = bert_input[shuf_idx]
-    comp_input = comp_input[shuf_idx]
+    X = X[shuf_idx]
     y = y[shuf_idx]
-    scaler = StandardScaler()
-    comp_input = scaler.fit_transform(comp_input)
 
-    assert len(bert_input) == len(comp_input) == len(y)
+    assert len(bert_input) == len(y)
     splitter = StratifiedShuffleSplit(n_splits=2, test_size=0.25, random_state=43)
-    for train_index, test_index in splitter.split(comp_input, y):
-        comp_input_tmp, comp_input_test = comp_input[train_index], comp_input[test_index]
-        bert_input_tmp, bert_input_test = bert_input[train_index], bert_input[test_index]
+    for train_index, test_index in splitter.split(X, y):
+        X_tmp, X_test = X[train_index], X[test_index]
         y_tmp, y_test = y[train_index], y[test_index]
     splitter = StratifiedShuffleSplit(n_splits=2, test_size=0.1, random_state=12)
-    for train_index, valid_index in splitter.split(comp_input_tmp, y_tmp):
-        comp_input_train, comp_input_valid = comp_input_tmp[train_index], comp_input_tmp[valid_index]
-        bert_input_train, bert_input_valid = bert_input_tmp[train_index], bert_input_tmp[valid_index]
+    for train_index, valid_index in splitter.split(X_tmp, y_tmp):
+        X_train, X_valid = X_tmp[train_index], X_tmp[valid_index]
         y_train, y_valid = y_tmp[train_index], y_tmp[valid_index]
     ds_lookup = {
-        'comp_input_train': comp_input_train,
-        'comp_input_test': comp_input_test,
-        'comp_input_valid': comp_input_valid,
-        'bert_input_train': bert_input_train,
-        'bert_input_test': bert_input_test,
-        'bert_input_valid': bert_input_valid,
+        'X_train': X_train,
+        'X_test': X_test,
+        'X_valid': X_valid,
         'y_train': y_train,
         'y_test': y_test,
         'y_valid': y_valid
     }
     for file, obj in ds_lookup.items():
-        path = os.path.join('data', 'simple_exemption', '{}.npy'.format(file))
+        path = os.path.join('data', 'bert_only', '{}.npy'.format(file))
         with open(path, 'wb') as f:
             np.save(f, obj)
 
